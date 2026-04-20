@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "Lookup": {
+      "title": "Lookup",
+      "description": "A phone number lookup result",
+      "type": "object",
+      "properties": {
+        "phone": { "type": "string", "description": "The phone number searched" },
+        "riskScore": { "type": "number", "description": "0 to 100 probability of being fraudulent" },
+        "commercialUsage": { "type": "boolean", "description": "Is it used for commercial purposes?" },
+        "possibleCompany": { "type": "string", "description": "Company name if found" },
+        "purpose": { "type": "string", "description": "Purpose of the phone" },
+        "summary": { "type": "string", "description": "Summary of online findings" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["phone", "riskScore", "commercialUsage", "summary", "createdAt"]
+    }
+  },
+  "firestore": {
+    "lookups/{phone}": {
+      "schema": { "$ref": "Lookup" },
+      "description": "Stored lookups mapped by phone number string"
+    }
+  }
+}

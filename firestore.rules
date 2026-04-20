@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidLookup(data) {
+      return data.keys().hasAll(['phone', 'riskScore', 'commercialUsage', 'summary', 'createdAt'])
+        && data.phone is string
+        && data.phone.size() <= 20
+        && data.riskScore is number
+        && data.commercialUsage is bool
+        && data.summary is string
+        && data.summary.size() <= 5000;
+    }
+
+    match /lookups/{phone} {
+      // Anyone can read a lookup
+      allow read: if true;
+      // Anyone can create a lookup (anonymous)
+      allow create: if isValidLookup(request.resource.data);
+      // Updates not needed
+      allow update: if false;
+      // Deletes not needed
+      allow delete: if false;
+    }
+  }
+}
