@@ -1,1 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;475;500;600&display=swap');
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  
+  --color-canvas: #ffffff;
+  --color-ink: #181d26;
+  --color-body: #333840;
+  --color-muted: #41454d;
+  
+  --color-surface-soft: #f8fafc;
+  --color-surface-strong: #e0e2e6;
+  --color-surface-dark: #181d26;
+  --color-surface-dark-elevated: #1d1f25;
+  
+  --color-hairline: #dddddd;
+  --color-border-strong: #9297a0;
+  
+  --color-primary: #181d26;
+  --color-primary-active: #0d1218;
+  --color-on-primary: #ffffff;
+  
+  --color-signature-coral: #aa2d00;
+  --color-signature-forest: #0a2e0e;
+  --color-signature-cream: #f5e9d4;
+  --color-signature-peach: #fcab79;
+  --color-signature-mint: #a8d8c4;
+  --color-signature-yellow: #f4d35e;
+  --color-signature-mustard: #d9a441;
+  
+  --color-link: #1b61c9;
+  --color-link-active: #1a3866;
+  --color-info: #254fad;
+  --color-info-border: #458fff;
+  --color-success: #006400;
+  --color-success-border: #39bf45;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-body);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .hidden-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hidden-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  @property --magic-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes rotate-magic {
+    0% { --magic-angle: 0deg; }
+    100% { --magic-angle: 360deg; }
+  }
+
+  .btn-magic-gradient-dark {
+    border: 4px solid transparent;
+    background: 
+       linear-gradient(#181d26, #181d26) padding-box,
+       #181d26 border-box;
+    transition: background-color 0.3s ease;
+  }
+  .btn-magic-gradient-dark:hover {
+    background:
+       linear-gradient(#0d1218, #0d1218) padding-box,
+       conic-gradient(from var(--magic-angle), #1b61c9, #39bf45, #aa2d00, #d9a441, #1b61c9) border-box;
+    animation: rotate-magic 2.5s linear infinite;
+  }
+
+  .btn-magic-gradient-white {
+    border: 4px solid transparent;
+    background: 
+       linear-gradient(#ffffff, #ffffff) padding-box,
+       #ffffff border-box;
+    transition: background-color 0.3s ease;
+  }
+  .btn-magic-gradient-white:hover {
+    background:
+       linear-gradient(#f8fafc, #f8fafc) padding-box,
+       conic-gradient(from var(--magic-angle), #1b61c9, #39bf45, #aa2d00, #d9a441, #1b61c9) border-box;
+    animation: rotate-magic 2.5s linear infinite;
+  }
+
+  @keyframes green-pulse {
+    0% { color: #86efac; }
+    50% { color: #16a34a; }
+    100% { color: #86efac; }
+  }
+
+  .word-blur-gradient {
+    filter: blur(2.5px);
+    transition: all 0.5s ease-out;
+    font-style: italic;
+    cursor: zoom-in;
+    padding-right: 0.15em; /* Prevent italic cutoff at the right border */
+    display: inline-block;
+    animation: green-pulse 3s ease-in-out infinite;
+  }
+
+  .group:hover .word-blur-gradient {
+    filter: blur(0px);
+    color: #1b61c9;
+    animation: none;
+  }
+
+  @keyframes gradient-move {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .text-shine {
+    background: linear-gradient(110deg, #181d26 30%, #689ff8 50%, #181d26 70%);
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: shine-anim 4s linear infinite;
+  }
+
+  @keyframes shine-anim {
+    0% { background-position: 200% center; }
+    100% { background-position: -200% center; }
+  }
+
+  .animate-decrypt {
+    animation: glitch-filter 1.5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  }
+
+  @keyframes glitch-filter {
+    0% { filter: blur(12px); letter-spacing: -6px; opacity: 0; }
+    40% { filter: blur(6px); letter-spacing: -2px; opacity: 0.8; }
+    100% { filter: blur(0px); letter-spacing: normal; opacity: 1; }
+  }
+}
+
