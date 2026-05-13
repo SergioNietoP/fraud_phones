@@ -21,7 +21,10 @@ Objetivo: ¿A quién pertenece este número? ¿Es legítimo o fraude?
 
 ### SIMULACIÓN DE CONTACTO / DIÁLOGO INTERACTIVO
 Genera un ejemplo de conversación basado en la forma en que este número actúa. Debe ser un diálogo corto de 4 a 6 mensajes, alternando entre 'Llamante' (el teléfono analizado) y 'Usuario'.
-- 'categoria_general': Tipo de actividad muy concisa. DEBO SER ESTRICTO Y DEBE CONTENER 1 o 2 PALABRAS EXACTAMENTE, ejemplos concretos: "Estafa Bancaria", "Vishing", "Robo Datos", "Telemarketing", "Cobro Deudas", "Spam SMS". No uses frases.
+- 'categoria_general': Tipo de actividad muy concisa. DEBE CONTENER 1 o 2 PALABRAS MÁXIMO. REGLA ESTRICTA: 
+  - Si es Fraude, un tipo muy conciso (ej. "Robo Datos", "Vishing", "Estafa Bancaria", "Criptomonedas").
+  - Si es Otro, una o dos palabras (ej. "Particular", "Desconocido", "Encuesta", "ONG").
+- 'nombre_empresa_corto': En caso de ser de tipo "Comercial" debes devolver la compañía exacta (ej. "Vodafone", "Iberdrola", "Naturgy"). Solo el nombre comercial sin SA, SL, etc.
 - 'nivel_insistencia': 0 a 100. ¿Llaman constantemente o es puntual?
 - 'dialogo_simulado': Lista de objetos evaluando el escenario real si el usuario responde. (Si es contestador, un monólogo).
 
@@ -31,10 +34,11 @@ Genera un ejemplo de conversación basado en la forma en que este número actúa
 - ratio_seguridad_empresa_legitima: confianza en que es empresa verificada (0-100)
 - nivel_sospecha_suplantacion: (0-100)
 
-### REGLAS DE ORO
-1. Si confirmas que es oficial (web, listín oficial), fraude_detectado = false.
-2. Si no hay datos, asume riesgo muy bajo o desconocido y ratios 0.
-3. El campo 'explicacion_tecnica' debe ser una 'Conclusión fácil de entender' pero profesional.
+### REGLAS DE ORO Y PREVENCIÓN DE FALSOS POSITIVOS
+1. Diferenciar estrictamente entre SPAM COMERCIAL y FRAUDE: Muchos usuarios reportan "fraude" simplemente porque los llaman mucho (telemarketing). Si el número pertenece a una empresa oficial verificada (ej. operadoras de telefonía como Vodafone, Lowi, Telefónica, o aseguradoras, bancos), DEBES poner 'es_comercial = true', 'fraude_detectado = false', y asume 'ratio_reportes_fraude = 0' y 'nivel_sospecha_suplantacion = 0'. Un "agente pesado" NO es fraude, es SPAM comercial.
+2. Si confirmas que es un número oficial (web, listín oficial o número corto tipo 1456, 1004, etc.), 'fraude_detectado' SIEMPRE DEBE SER 'false'.
+3. Si no hay datos, asume riesgo muy bajo y ratios 0.
+4. INSTRUCCIÓN CRÍTICA DE FUENTES: En el campo 'fuentes_consultadas', devuelve ÚNICAMENTE URLs reales originales (ej: https://www.listaspam.com/telefono/1456). ESTÁ PROHIBIDO devolver URLs de buscadores (como duckduckgo o google). Abre el resultado y copia la URL final.
 
 --- NÚMERO A INVESTIGAR: ${phone} ---
 Realiza la búsqueda e identificación para generar el JSON con la estructura indicada.
@@ -70,7 +74,7 @@ ESTRUCTURA ESPERADA:
 `;
 
   const response = await genAI.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.1-flash-lite",
     contents: prompt,
     config: {
       tools: [{ googleSearch: {} }]
@@ -103,7 +107,7 @@ Devuelve un JSON con la estructura indicada.
 `;
 
    const response = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

@@ -4,7 +4,7 @@ import { PhoneLookup, getPhoneLookup, updateHoneypot, HoneypotCall, DialogoSimul
 import { executeHoneypotCallSimulated } from "../services/geminiService";
 import { motion, AnimatePresence } from "motion/react";
 import { Search, Fingerprint, MessageSquareText, FileText, ArrowRight, X, Gauge, PhoneCall, Volume2, Mic } from "lucide-react";
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from "recharts";
 import { cn } from "../lib/utils";
 
 const ReadMoreModal = ({ title, content, onClose }: { title: string, content: string, onClose: () => void }) => (
@@ -74,28 +74,33 @@ export const TagNumbersModal = ({ tagText, numbers, onClose }: { tagText: string
 export const getComputedTags = (data: PhoneLookup) => {
   const isFraude = data.fraude_detectado || data.nivel_sospecha_suplantacion > 60 || data.ratio_reportes_fraude > 60;
   const isComercial = data.es_comercial && !isFraude;
-  const isMedRisk = (data.nivel_sospecha_suplantacion > 25 && data.nivel_sospecha_suplantacion <= 60) || (data.ratio_reportes_fraude > 25 && data.ratio_reportes_fraude <= 60);
+  const isMedRisk = !isFraude && ((data.nivel_sospecha_suplantacion > 25 && data.nivel_sospecha_suplantacion <= 60) || (data.ratio_reportes_fraude > 25 && data.ratio_reportes_fraude <= 60));
 
+  // 1. Evaluación 
   const evalLabel = isFraude ? "Evaluación Desfavorable" : isMedRisk ? "Evaluación Precaución" : "Evaluación Favorable";
-  const evalColor = isFraude ? "#aa2d00" : isMedRisk ? "#d9a441" : "#006400";
+  const evalColor = isFraude ? "#ef4444" : isMedRisk ? "#eab308" : "#22c55e"; // bright tailwind colors (red, yellow, green) for bg
+  const textDarkColor = isFraude ? "#991b1b" : isMedRisk ? "#a16207" : "#166534"; // darker text equivalent
   
+  // 2. Tipología General
   const typeLabel = isComercial ? "Comercial" : isFraude ? "Fraude" : "Otro";
   
+  // 3. Tipología Específica (1-2 words)
   let specificLabelStr = "Desconocido";
-  if (isComercial && data.nombre_empresa_corto) {
-    specificLabelStr = data.nombre_empresa_corto;
-  } else if (data.categoria_general && data.categoria_general !== "Desconocido") {
-    specificLabelStr = data.categoria_general;
-  } else if (data.empresa_pertenece_tlf) {
-    specificLabelStr = data.empresa_pertenece_tlf.split(' ').slice(0, 2).join(' ');
+  if (isFraude) {
+    specificLabelStr = (data.categoria_general && data.categoria_general !== "Desconocido") ? data.categoria_general : "Estafa Telefónica";
+  } else if (isComercial) {
+    specificLabelStr = data.nombre_empresa_corto || (data.empresa_pertenece_tlf ? data.empresa_pertenece_tlf.split(' ').slice(0, 2).join(' ') : "Empresa");
+  } else {
+    specificLabelStr = (data.categoria_general && data.categoria_general !== "Desconocido") ? data.categoria_general : "Particular";
   }
   
   const specificColor = (isComercial && data.empresa_color_hex) ? data.empresa_color_hex : evalColor;
+  const specificTextColor = (isComercial && data.empresa_color_hex) ? data.empresa_color_hex : textDarkColor;
 
   return {
-    evalTag: { text: evalLabel, color: evalColor, bg: `${evalColor}15`, queryType: 'eval' as const },
-    typeTag: { text: typeLabel, color: evalColor, bg: `${evalColor}15`, queryType: 'type' as const },
-    specTag: { text: specificLabelStr, color: specificColor, bg: `${specificColor}15`, queryType: 'spec' as const },
+    evalTag: { text: evalLabel, color: textDarkColor, bg: `${evalColor}20`, queryType: 'eval' as const },
+    typeTag: { text: typeLabel, color: textDarkColor, bg: `${evalColor}20`, queryType: 'type' as const },
+    specTag: { text: specificLabelStr, color: specificTextColor, bg: `${specificColor}20`, queryType: 'spec' as const },
     baseColor: evalColor
   };
 };
@@ -449,7 +454,7 @@ const HoneypotTerminal = ({
                      state === 'connecting' || state === 'intercepting' || state === 'generating' || state === 'playing' ? "bg-[#39bf45]" : "bg-[#9297a0]"
                   )}></div>
                   <h2 className="text-[14px] md:text-[16px] font-medium tracking-tight text-[#181d26]">
-                     Asistente de Llamada
+                     Llamada Inteligente
                   </h2>
                </div>
                
@@ -459,9 +464,9 @@ const HoneypotTerminal = ({
                         Detener Llamada
                      </button>
                   )}
-                  {(state === 'done' || state === 'aborted') && (
+                  {(state === 'done' || state === 'aborted' || mode === 'select') && (
                      <button onClick={onClose} className="px-6 py-2 bg-[#181d26] text-white font-medium text-[14px] rounded-[12px] hover:bg-[#0d1218] transition-colors">
-                        Cerrar Simulador
+                        Cerrar
                      </button>
                   )}
                </div>
@@ -730,6 +735,27 @@ export default function Results() {
      ];
   }, [data]);
 
+  const intentData = useMemo(() => {
+    if (!data) return [];
+    
+    let venta = data.es_comercial ? 70 : data.ratio_reportes_legitimo;
+    let roboDatos = data.nivel_sospecha_suplantacion;
+    let estafaEcon = data.ratio_reportes_fraude;
+    let spam = data.es_comercial ? 30 : (100 - (venta + roboDatos + estafaEcon));
+    if (spam < 0) spam = 0;
+
+    const total = venta + roboDatos + estafaEcon + spam || 1;
+
+    const arr = [
+       { name: "Venta / Marketing", value: Math.round((venta/total)*100), color: "#3b82f6" },
+       { name: "Robo de Datos", value: Math.round((roboDatos/total)*100), color: "#f97316" },
+       { name: "Estafa / Dinero", value: Math.round((estafaEcon/total)*100), color: "#ef4444" },
+       { name: "Spam / Molestia", value: Math.round((spam/total)*100), color: "#94a3b8" }
+    ].filter(i => i.value > 0);
+
+    return arr.sort((a,b) => b.value - a.value);
+  }, [data]);
+
   if (loading) return null;
 
   if (!data) {
@@ -815,7 +841,7 @@ export default function Results() {
                <span 
                   className="relative z-10"
                   style={{ 
-                     backgroundImage: `linear-gradient(110deg, #181d26 40%, ${color} 50%, #181d26 60%)`,
+                     backgroundImage: `linear-gradient(110deg, ${color} 40%, #ffffff 50%, ${color} 60%)`,
                      backgroundSize: "200% auto",
                      color: "transparent",
                      WebkitBackgroundClip: "text",
@@ -883,24 +909,29 @@ export default function Results() {
                    </button>
                 )}
 
-                {data.fuentes_consultadas && (
-                   <div className="mt-auto pt-6">
-                      <div className="text-[12px] text-[#9297a0] mb-3 font-medium">Fuentes de Origen</div>
-                      <div className="flex flex-wrap gap-2">
-                         {data.fuentes_consultadas.split(',').map((f, i) => (
-                            <a 
-                               key={i} 
-                               href={`https://duckduckgo.com/?q=${encodeURIComponent(`${f.trim()} numero telefono ${data.phone}`)}`} 
-                               target="_blank" 
-                               rel="noopener noreferrer" 
-                               className="text-[12px] font-medium px-3 py-1.5 rounded-[6px] bg-white border border-[#dddddd] text-[#41454d] truncate max-w-[150px] shadow-sm hover:border-[#9297a0] hover:text-[#181d26] transition-colors"
-                            >
-                               {f.trim()}
-                            </a>
-                         ))}
-                      </div>
+                <div className="mt-auto pt-6">
+                   <div className="text-[12px] text-[#9297a0] mb-3 font-medium">Algunas fuentes de origen</div>
+                   <div className="flex flex-wrap gap-2">
+                      <a 
+                         href={`https://www.listaspam.com/busca.php?Telefono=${data.phone}`} 
+                         target="_blank" 
+                         rel="noopener noreferrer" 
+                         className="text-[12px] font-medium px-3 py-1.5 rounded-[6px] bg-white border border-[#dddddd] text-[#41454d] truncate max-w-[150px] shadow-sm hover:border-[#9297a0] hover:text-[#181d26] transition-colors"
+                         title="ListaSpam"
+                      >
+                         ListaSpam
+                      </a>
+                      <a 
+                         href={`https://www.tellows.es/num/${data.phone}`} 
+                         target="_blank" 
+                         rel="noopener noreferrer" 
+                         className="text-[12px] font-medium px-3 py-1.5 rounded-[6px] bg-white border border-[#dddddd] text-[#41454d] truncate max-w-[150px] shadow-sm hover:border-[#9297a0] hover:text-[#181d26] transition-colors"
+                         title="Tellows"
+                      >
+                         Tellows
+                      </a>
                    </div>
-                )}
+                </div>
              </div>
           </div>
 
@@ -942,6 +973,25 @@ export default function Results() {
                       <AnimatePresence>
                          {data.dialogo_simulado.slice(0, visibleMessages).map((msg, i) => {
                             const isCaller = msg.emisor.toLowerCase() === "llamante";
+
+                            const isUnfavorable = data.fraude_detectado || data.nivel_sospecha_suplantacion > 60 || data.ratio_reportes_fraude > 60;
+                            
+                            let callerName = msg.emisor;
+                            if (isCaller) {
+                               const tags = getComputedTags(data);
+                               if (tags.length > 0) {
+                                  callerName = tags.map(t => t.label).join(" • ");
+                               } else {
+                                  callerName = "Llamante";
+                               }
+                            }
+
+                            const callerBubbleBg = isUnfavorable 
+                               ? "bg-[#fdf2f2] border border-[#fdd1d1] text-[#902525] rounded-[16px] rounded-tl-[4px]" 
+                               : "bg-[#f0fdf4] border border-[#bbf7d0] text-[#166534] rounded-[16px] rounded-tl-[4px]";
+                               
+                            const callerLabelColor = isUnfavorable ? "text-[#aa2d00] ml-2" : "text-[#166534] ml-2";
+
                             return (
                                <motion.div 
                                   key={i}
@@ -954,13 +1004,13 @@ export default function Results() {
                                >
                                   <span className={cn(
                                      "text-[11px] font-medium",
-                                     isCaller ? "text-[#aa2d00] ml-2" : "text-[#9297a0] mr-2 self-end"
+                                     isCaller ? callerLabelColor : "text-[#9297a0] mr-2 self-end"
                                   )}>
-                                     {msg.emisor}
+                                     {isCaller ? callerName : msg.emisor}
                                   </span>
                                   <div className={cn(
                                      "px-5 py-3.5 text-[14px] leading-relaxed shadow-sm relative",
-                                     isCaller ? "bg-[#fdf2f2] border border-[#fdd1d1] text-[#902525] rounded-[16px] rounded-tl-[4px]" : "bg-white border border-[#dddddd] text-[#181d26] rounded-[16px] rounded-br-[4px]"
+                                     isCaller ? callerBubbleBg : "bg-white border border-[#dddddd] text-[#181d26] rounded-[16px] rounded-br-[4px]"
                                   )}>
                                      {msg.mensaje}
                                   </div>
@@ -1033,12 +1083,12 @@ export default function Results() {
           <div className="md:col-span-2 xl:col-span-1 flex flex-col gap-6 w-full h-full">
 
              {/* Radar Analytics */}
-             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 relative group hover:border-[#181d26] transition-colors h-[270px] flex flex-col items-center justify-center">
+             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 relative group hover:border-[#181d26] transition-colors flex-1 min-h-[250px] flex flex-col items-center justify-center">
                 <div className="absolute top-4 left-6 text-[12px] font-medium text-[#9297a0] z-20">
                    Análisis de riesgo
                 </div>
-                <div className="w-full h-full mt-6 opacity-90 overflow-hidden">
-                   <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full h-[180px] mt-2 opacity-90 overflow-hidden min-w-0 min-h-0">
+                   <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                       <RadarChart cx="50%" cy="50%" outerRadius="60%" data={radarData} margin={{ top: 0, right: 10, bottom: 0, left: 30 }}>
                          <PolarGrid stroke="rgba(0,0,0,0.08)" />
                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(24,29,38,0.6)', fontSize: 10, fontFamily: 'Inter' }} />
@@ -1050,7 +1100,7 @@ export default function Results() {
              </div>
 
              {/* Insistencia Gauge */}
-             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 group hover:border-[#181d26] transition-colors">
+             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 group hover:border-[#181d26] transition-colors shrink-0">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-[12px] text-[#9297a0] font-medium flex items-center gap-2">
                     <Gauge size={14} /> Nivel Insistencia
@@ -1072,13 +1122,13 @@ export default function Results() {
              </div>
 
              {/* Raw Metrics Summary -> Advanced Bar Chart */}
-             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 group hover:border-[#181d26] transition-colors flex flex-col justify-center min-h-[200px]">
+             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 group hover:border-[#181d26] transition-colors flex flex-col justify-center flex-1 min-h-[200px]">
                 <div className="text-[12px] font-medium text-[#9297a0] mb-6 flex justify-between items-center">
                    <span>Reportes de usuarios</span>
                    <span className="text-[#41454d]">n={data.total_reportes_encontrados}</span>
                 </div>
-                <div className="h-[120px] w-full">
-                   <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[120px] w-full min-w-0 min-h-0">
+                   <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                       <BarChart layout="vertical" data={barData} margin={{ top: 0, right: 20, left: 20, bottom: 0 }}>
                          <XAxis type="number" hide domain={[0, 100]} />
                          <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fill: 'rgba(24,29,38,0.7)', fontSize: 11, fontFamily: 'Inter', fontWeight: 500 }} />
@@ -1102,6 +1152,59 @@ export default function Results() {
                          </Bar>
                       </BarChart>
                    </ResponsiveContainer>
+                </div>
+             </div>
+
+             {/* Call Intent Distribution -> Advanced Donut Chart */}
+             <div className="bg-[#f8fafc] border border-[#dddddd] rounded-[10px] p-6 group hover:border-[#181d26] transition-colors flex flex-col justify-center flex-1 min-h-[220px]">
+                <div className="text-[12px] font-medium text-[#9297a0] mb-4 flex justify-between items-center">
+                   <span>Motivación Principal</span>
+                   <span className="text-[#41454d] text-[10px] uppercase font-bold px-2 py-0.5 border border-[#dddddd] rounded-full bg-white">Intenciones</span>
+                </div>
+                <div className="w-full h-[140px] relative flex justify-center items-center min-w-0 min-h-0">
+                   {intentData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+                         <PieChart>
+                            <Pie
+                               data={intentData}
+                               cx="50%"
+                               cy="50%"
+                               innerRadius={45}
+                               outerRadius={65}
+                               paddingAngle={2}
+                               dataKey="value"
+                               stroke="none"
+                            >
+                               {intentData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                               ))}
+                            </Pie>
+                            <Tooltip 
+                               cursor={false}
+                               content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                     return (
+                                        <div className="bg-white border border-[#dddddd] shadow-sm p-3 rounded-[6px] text-[12px] font-medium">
+                                           <span style={{ color: payload[0].payload.color }}>{payload[0].payload.name}</span>: {payload[0].value}%
+                                        </div>
+                                     );
+                                  }
+                                  return null;
+                               }}
+                            />
+                         </PieChart>
+                      </ResponsiveContainer>
+                   ) : (
+                      <div className="flex w-full h-[60px] items-center justify-center text-[12px] text-[#9297a0]">
+                         Sin datos suficientes
+                      </div>
+                   )}
+                   {intentData.length > 0 && (
+                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                       <span className="text-[18px] font-bold text-[#181d26] leading-none mb-1">{intentData[0].value}%</span>
+                       <span className="text-[9px] uppercase tracking-wider text-[#9297a0] font-medium max-w-[70px] text-center leading-tight">{intentData[0].name}</span>
+                     </div>
+                   )}
                 </div>
              </div>
 

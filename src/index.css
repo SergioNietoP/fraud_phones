@@ -94,26 +94,28 @@
     animation: rotate-magic 2.5s linear infinite;
   }
 
-  @keyframes green-pulse {
-    0% { color: #86efac; }
-    50% { color: #16a34a; }
-    100% { color: #86efac; }
+  @keyframes uniform-color-cycle {
+    0% { color: #3b82f6; }
+    25% { color: #ef4444; }
+    50% { color: #22c55e; }
+    75% { color: #eab308; }
+    100% { color: #3b82f6; }
   }
 
   .word-blur-gradient {
-    filter: blur(2.5px);
-    transition: all 0.5s ease-out;
+    color: #3b82f6;
+    filter: blur(3px);
+    transition: filter 0.5s ease-out;
     font-style: italic;
     cursor: zoom-in;
     padding-right: 0.15em; /* Prevent italic cutoff at the right border */
     display: inline-block;
-    animation: green-pulse 3s ease-in-out infinite;
+    animation: uniform-color-cycle 6s linear infinite;
   }
 
   .group:hover .word-blur-gradient {
     filter: blur(0px);
-    color: #1b61c9;
-    animation: none;
+    animation-play-state: paused;
   }
 
   @keyframes gradient-move {

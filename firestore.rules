@@ -9,7 +9,7 @@ service cloud.firestore {
       allow read: if true;
       allow create: if true; // Relaxed for the honeypot prototype
       allow update: if true; // Allow updates for honeypot data injection
-      allow delete: if false;
+      allow delete: if true; // Open for dev tools wipeout
     }
   }
 }

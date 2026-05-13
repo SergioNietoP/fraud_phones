@@ -5,6 +5,7 @@ import { motion } from "motion/react";
 import { cn } from "../lib/utils";
 import { getRecentLookups, PhoneLookup } from "../services/firebaseService";
 import { getComputedTags, TagNumbersModal } from "./Results";
+import DevTools from "../components/DevTools";
 
 export default function Home() {
   const [phone, setPhone] = useState("");
@@ -65,9 +66,9 @@ export default function Home() {
 
             <form onSubmit={handleSearch} className="w-full max-w-[420px] flex flex-col gap-4">
                <input 
-                  type="text" 
+                  type="tel" 
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
                   placeholder="Introduce el número..." 
                   className="w-full bg-white border border-[#dddddd] rounded-[6px] text-center text-xl font-medium tracking-tight px-4 py-4 outline-none text-[#181d26] placeholder-[#9297a0] focus:border-[#458fff] focus:ring-1 focus:ring-[#458fff] transition-all"
                   autoFocus
@@ -150,6 +151,7 @@ export default function Home() {
       )}
       
       {tagModalData && <TagNumbersModal tagText={tagModalData.tagText} numbers={tagModalData.numbers} onClose={() => setTagModalData(null)} />}
+      <DevTools />
     </div>
   );
 }
