@@ -1,20 +1,37 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
 import { getRecentLookups, PhoneLookup } from "../services/firebaseService";
 import { getComputedTags, TagNumbersModal } from "./Results";
 import DevTools from "../components/DevTools";
 
+const ROTATING_PHRASES = [
+  "antes de contestar.",
+  "y evita posibles estafas.",
+  "sin devolver la llamada.",
+  "y descubre si es seguro.",
+  "y despídete del spam.",
+  "con total seguridad."
+];
+
 export default function Home() {
   const [phone, setPhone] = useState("");
   const [recent, setRecent] = useState<PhoneLookup[]>([]);
   const [tagModalData, setTagModalData] = useState<{tagText: string, numbers: PhoneLookup[]} | null>(null);
+  const [phraseIndex, setPhraseIndex] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
     getRecentLookups().then(data => setRecent(data));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPhraseIndex((prev) => (prev + 1) % ROTATING_PHRASES.length);
+    }, 3500);
+    return () => clearInterval(interval);
   }, []);
 
   const aggregatedTags = useMemo(() => {
@@ -58,7 +75,21 @@ export default function Home() {
             <h1 className="text-4xl md:text-[48px] font-normal tracking-tight text-[#181d26] mb-6 leading-[1.1]">
                Descubre <span className="relative inline-block group">
     <span className="word-blur-gradient select-none">quién</span>
-  </span> te llama antes de contestar.
+  </span> te llama <br className="hidden sm:block" />
+               <span className="inline-grid [grid-template-areas:'content'] text-[#1b61c9]">
+                  <AnimatePresence mode="popLayout">
+                     <motion.span
+                        key={phraseIndex}
+                        initial={{ opacity: 0, y: 15, filter: "blur(4px)" }}
+                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                        exit={{ opacity: 0, y: -15, filter: "blur(4px)" }}
+                        transition={{ duration: 0.75, ease: "easeInOut" }}
+                        className="[grid-area:content]"
+                     >
+                        {ROTATING_PHRASES[phraseIndex]}
+                     </motion.span>
+                  </AnimatePresence>
+               </span>
             </h1>
             <p className="text-[#333840] text-[16px] md:text-[18px] max-w-[500px] mb-12">
                Analizamos reportes y bases de datos para decirte a quién pertenece un número, si es seguro, o si se trata de spam.
